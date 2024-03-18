@@ -56,32 +56,71 @@ void printGraph(Graph* graph) {
 /* Returns a newly created Edge from vertex with ID 'fromVertex' to vertex
  * with ID 'toVertex', with weight 'weight'.
  */
-Edge* newEdge(int fromVertex, int toVertex, int weight);
+Edge* newEdge(int fromVertex, int toVertex, int weight){
+  Edge *newEdge = malloc(sizeof(Edge));
+  newEdge->fromVertex = fromVertex;
+  newEdge->toVertex = toVertex;
+  newEdge->weight = weight;
+  return newEdge;
+}
 
 /* Returns a newly created EdgeList containing 'edge' and pointing to the next
  * EdgeList node 'next'.
  */
-EdgeList* newEdgeList(Edge* edge, EdgeList* next);
+EdgeList* newEdgeList(Edge* edge, EdgeList* next){
+  EdgeList *newEdgeList = malloc(sizeof(EdgeList));
+  newEdgeList->edge = edge;
+  newEdgeList->next = next;
+  return newEdgeList; 
+}
 
 /* Returns a newly created Vertex with ID 'id', value 'value', and adjacency
  * list 'adjList'.
  * Precondition: 'id' is valid for this vertex
  */
-Vertex* newVertex(int id, void* value, EdgeList* adjList);
+Vertex* newVertex(int id, void* value, EdgeList* adjList){
+  Vertex *newVertex = malloc(sizeof(Vertex));
+  newVertex->id = id;
+  newVertex->value = value;
+  newVertex->adjList = adjList;
+  return newVertex;
+}
 
 /* Returns a newly created Graph with space for 'numVertices' vertices.
  * Precondition: numVertices >= 0
  */
-Graph* newGraph(int numVertices);
+Graph* newGraph(int numVertices){
+  Graph *newGraph = malloc(sizeof(Graph));
+  newGraph->numVertices = numVertices;
+  Vertex **verticies = malloc(sizeof(Vertex)*numVertices);
+  newGraph->numEdges = 0;
+}
 
 /* Frees memory allocated for EdgeList starting at 'head'.
  */
-void deleteEdgeList(EdgeList* head);
+void deleteEdgeList(EdgeList* head){
+  EdgeList *current = head;
+  while (current != NULL){
+    EdgeList* next = current->next;
+    free(current->edge);   // Free the memory allocated for the edge
+    free(current);         // Free the memory allocated for the edge list node
+    current = next;        // Move to the next node
+  }
+}
 
 /* Frees memory allocated for 'vertex' including its adjacency list.
  */
-void deleteVertex(Vertex* vertex);
+void deleteVertex(Vertex* vertex){
+  deleteEdgeList(vertex->adjList);
+  free(vertex);
+}
 
 /* Frees memory allocated for 'graph'.
  */
-void deleteGraph(Graph* graph);
+void deleteGraph(Graph* graph){
+  for (int i = 0; i < graph->numVertices; i++) {
+        deleteVertex(graph->vertices[i]);   
+    }
+  free(graph->vertices); 
+  free(graph);         
+}
