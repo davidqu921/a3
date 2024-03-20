@@ -229,7 +229,10 @@ HeapNode extractMin(MinHeap* heap){
        heap->indexMap[lastNodeId] = ROOT_INDEX;
 
        bubbleDown(heap);
-       return minNode;
+       HeapNode* minNodeCopy = (HeapNode*)malloc(sizeof(HeapNode));
+       minNodeCopy->id = minNode.id;
+       minNodeCopy->priority = minNode.priority;
+       return *minNodeCopy;
 }
 
 /* Inserts a new node with priority 'priority' and ID 'id' into minheap 'heap'.
