@@ -197,6 +197,8 @@ Edge* getMSTprim(Graph* graph, int startVertex){
     }
   }
 
+
+  // copy to local memory and free the dynamic memory 
   Edge* result[records->numTreeEdges];
   for (int i = 0; i++; i < records->numTreeEdges){
     // result[i] = records->tree[i]; ?
