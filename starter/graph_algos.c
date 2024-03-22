@@ -60,6 +60,8 @@ Records* initRecords(Graph* graph, int startVertex){
   initRecords->tree = tree;
 
   initRecords->numTreeEdges = 0;
+
+  return initRecords;
 }
 
 /* Creates, populates, and returns a MinHeap to be used by Prim's and
@@ -88,28 +90,14 @@ bool isEmpty(MinHeap* heap){
   return false;
 }
 
-/* Prints the status of all current algorithm data: good for debugging. */
-void printRecords(Records* records){
-  printf("numVertices: %d\n", records->numVertices);
-  printHeap(records->heap);
-  for (int i=0; i++; i<records->numVertices){
-    printf("The Vertex of ID %d finished: %d\n", i, records->finished[i]);
-  }
-  for (int i=0; i++; i<records->numVertices){
-    printf("Vertex with ID %d has predecessor with ID %d\n", i, records->predecessors[i]);
-  }
-  for (int i=0; i++; i<records->numVertices){
-    printEdge(records->tree + i);
-  }
-  printf("Current number of edges in tree: %d\n", records->numTreeEdges);
 
-}
 
 /* Add a new edge to records at index ind. */
 void addTreeEdge(Records* records, int ind, int fromVertex, int toVertex, int weight){
-  records->tree[ind].fromVertex = fromVertex; // (records->tree+ind)->fromVertex = fromVertex;
+  records->tree[ind].fromVertex = fromVertex; // RO: (records->tree+ind)->fromVertex = fromVertex;
   records->tree[ind].toVertex = toVertex;
   records->tree[ind].weight = weight; 
+  records->numTreeEdges = records->numTreeEdges + 1;
 }
 
                  
@@ -132,9 +120,174 @@ EdgeList* makePath(Edge* distTree, int vertex, int startVertex){
   }
 }
 
+bool isValidVertex(Graph* graph, int vertexIndex){
+  if (vertexIndex >= 0 && vertexIndex < graph->numVertices){
+    return true;
+  }
+  return false;
+}
+
+/*int findWeight(Graph* graph, int fromVertex, int toVertex){ // pre-condistion: graph is connected
+  Vertex* pred = graph->vertices[fromVertex];
+  EdgeList* adjList = pred->adjList;
+  while (adjList->edge->toVertex != toVertex && adjList->next!=NULL){
+    adjList = adjList->next;
+  }
+  return adjList->edge->weight;
+}*/
+
+void deleteRecords(Records *records){
+  deleteHeap(records->heap);
+  free(records->finished);
+  free(records->predecessors);
+  free(records->tree);
+}
+
+void copyPath(EdgeList* newpath, EdgeList* oldpath){
+  newpath->edge->fromVertex = oldpath->edge->fromVertex;
+  newpath->edge->toVertex = oldpath->edge->toVertex;
+  newpath->edge->weight = oldpath->edge->weight;
+  
+  if(oldpath->next != NULL){
+    copyPath(newpath->next, oldpath->next);
+  }
+  else{
+    newpath->next = NULL;
+  }
+}
+
 /*************************************************************************
  ** Required functions
  *************************************************************************/
+/* Runs Prim's algorithm on Graph 'graph' starting from vertex with ID
+ * 'startVertex', and return the resulting MST: an array of Edges.
+ * Returns NULL is 'startVertex' is not valid in 'graph'.
+ * Precondition: 'graph' is connected.
+ */
+Edge* getMSTprim(Graph* graph, int startVertex){
+  if(!isValidVertex(graph, startVertex)){
+    return NULL;
+  }
+
+  Records* records = initRecords(graph, startVertex); 
+  // records holds a lot of dynamic memory which need to free later
+
+  while (!isEmpty(records->heap)){
+    HeapNode u = extractMin(records->heap);
+    records->finished[u.id] = true;
+    if (u.id != startVertex){
+      int predId = records->predecessors[u.id];
+      //int weight = findWeight(graph, predId, u.id);
+      int weight = u.priority;
+      addTreeEdge(records, records->numTreeEdges, predId, u.id, weight);
+    } 
+    Vertex* vertex =  graph->vertices[u.id];
+    EdgeList* adjList = vertex->adjList;
+    while (adjList->edge != NULL){
+      int v = adjList->edge->toVertex;
+      int weightUtoV = adjList->edge->weight;
+      int priorityV = getPriority(records->heap, v);
+      if (!records->finished[v] && weightUtoV < priorityV){//(records->heap->indexMap[v]!= NOTHING)
+        decreasePriority(records->heap, v, weightUtoV);
+      }
+      //*(records->predecessors+v) = u.id;
+      records->predecessors[v] = u.id;
+
+      adjList = adjList->next;
+    }
+  }
+
+  Edge* result[records->numTreeEdges];
+  for (int i = 0; i++; i < records->numTreeEdges){
+    // result[i] = records->tree[i]; ?
+    result[i]->fromVertex = records->tree[i].fromVertex;
+    result[i]->toVertex = records->tree[i].toVertex;
+    result[i]->weight = records->tree[i].weight;
+  }
+
+  deleteRecords(records);
+
+  return result;
+}
+
+/* Runs Dijkstra's algorithm on Graph 'graph' starting from vertex with ID
+ * 'startVertex', and return the resulting distance tree: an array of edges.
+ * Returns NULL if 'startVertex' is not valid in 'graph'.
+ * Precondition: 'graph' is connected.
+ */
+Edge* getDistanceTreeDijkstra(Graph* graph, int startVertex){
+  if(!isValidVertex(graph, startVertex)){
+    return NULL;
+  }
+  Records* records = initRecords(graph, startVertex); 
+  // records holds a lot of dynamic memory which need to free later
+  while (!isEmpty(records->heap)){
+    HeapNode u = extractMin(records->heap);
+    records->finished[u.id] = true;
+    if (u.id != startVertex){
+      int predId = records->predecessors[u.id];
+      //int weight = findWeight(graph, predId, u.id);
+      int weight = u.priority;
+      addTreeEdge(records, records->numTreeEdges, predId, u.id, weight);
+    } 
+    Vertex* vertex =  graph->vertices[u.id];
+    EdgeList* adjList = vertex->adjList;
+    while (adjList->edge != NULL){
+      int v = adjList->edge->toVertex;
+      int weightUtoV = adjList->edge->weight;
+      int priorityV = getPriority(records->heap, v);
+      int priorityU = getPriority(records->heap, u.id);
+      int d = priorityU + weightUtoV;
+      if (!records->finished[v] && d < priorityV){//(records->heap->indexMap[v]!= NOTHING)
+        decreasePriority(records->heap, v, d);
+      }
+      //*(records->predecessors+v) = u.id;
+      records->predecessors[v] = u.id;
+
+      adjList = adjList->next;
+    }
+  }
+
+  Edge* distTree[records->numTreeEdges];
+  for (int i = 0; i++; i < records->numTreeEdges){
+    // result[i] = records->tree[i]; ?
+    distTree[i]->fromVertex = records->tree[i].fromVertex;
+    distTree[i]->toVertex = records->tree[i].toVertex;
+    distTree[i]->weight = records->tree[i].weight;
+  }
+
+  deleteRecords(records);
+
+  return distTree;
+
+}
+
+/* Creates and returns an array 'paths' of shortest paths from every vertex
+ * in the graph to vertex 'startVertex', based on the information in the
+ * distance tree 'distTree' produced by Dijkstra's algorithm on a graph with
+ * 'numVertices' vertices and with the start vertex 'startVertex'.  paths[id]
+ * is the list of edges of the form
+ *   [(id -- id_1, w_0), (id_1 -- id_2, w_1), ..., (id_n -- start, w_n)]
+ *   where w_0 + w_1 + ... + w_n = distance(id)
+ * Returns NULL if 'startVertex' is not valid in 'distTree'.
+ */
+EdgeList** getShortestPaths(Edge* distTree, int numVertices, int startVertex){
+  if(distTree->fromVertex != startVertex){
+    return NULL;
+  }
+
+  EdgeList*  paths[numVertices]; // an array of path
+
+  for(int i=0; i<numVertices; i++){
+    if(i != startVertex){
+      EdgeList * path = makePath(distTree, i, startVertex);
+      copyPath(paths[i], path);
+      deleteEdgeList(path);
+    }
+  }
+  return paths;
+
+}
 
 
 /*************************************************************************
